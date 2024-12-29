@@ -1,15 +1,10 @@
-/*---------------------------------------------------------------------------------------------
- *  Copyright (c) Microsoft Corporation. All rights reserved.
- *  Licensed under the MIT License. See License.txt in the project root for license information.
- *--------------------------------------------------------------------------------------------*/
-
 const { series } = require('gulp');
 const exec = require('child_process').exec;
 
-// Existing gulpfile import
-require('./build/gulpfile.base');
+// Importar las tareas existentes desde gulpfile.base.js
+const baseGulpfile = require('./build/gulpfile.base');
 
-// New task to build React components
+// Nueva tarea para compilar componentes React
 function buildReact(cb) {
   console.log('Building React components...');
   exec('npm run buildreact', function (err, stdout, stderr) {
@@ -23,11 +18,11 @@ function buildReact(cb) {
   });
 }
 
-// Import the existing build task (adjust the actual task name as needed)
-const existingBuildTask = require('./build/gulpfile.base')['vscode-linux-x64'];
+// Referencia a la tarea existente 'vscode-linux-x64'
+const existingBuildTask = baseGulpfile['vscode-linux-x64'];
 
-// Modify the existing build task to include React build
+// Definir la nueva tarea 'vscode-linux-x64' que incluye 'buildReact' antes
 exports['vscode-linux-x64'] = series(buildReact, existingBuildTask);
 
-// Export other existing tasks
-module.exports = require('./build/gulpfile.base');
+// Exportar otras tareas existentes
+Object.assign(exports, baseGulpfile);

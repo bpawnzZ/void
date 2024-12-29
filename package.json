@@ -1,5 +1,5 @@
 {
-  "name": "code-oss-dev",
+  "name": "@microsoft/code-oss-dev",
   "version": "1.94.0",
   "distro": "ffcc24343ac46468a625666e5b9e673971dd1a1f",
   "author": {
@@ -7,7 +7,7 @@
   },
   "license": "MIT",
   "main": "./out/main",
-  "private": true,
+  "private": false,
   "scripts": {
     "buildreact": "cd ./src/vs/workbench/contrib/void/browser/react/ && node build.js && cd ../../../../../../../",
     "watchreact": "cd ./src/vs/workbench/contrib/void/browser/react/ && node build.js --watch && cd ../../../../../../../",
@@ -72,6 +72,9 @@
     "extensions-ci-pr": "node ./node_modules/gulp/bin/gulp.js extensions-ci-pr",
     "perf": "node scripts/code-perf.js",
     "update-build-ts-version": "npm install typescript@next && tsc -p ./build/tsconfig.build.json"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",

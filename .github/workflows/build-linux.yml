@@ -12,6 +12,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: recursive
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
@@ -19,8 +21,28 @@ jobs:
         node-version-file: '.nvmrc'
         cache: 'npm'
 
-    - name: Install dependencies
-      run: npm install
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          libkrb5-dev \
+          libgssapi-krb5-2 \
+          python3 \
+          make \
+          g++
+
+    - name: Install npm dependencies
+      run: |
+        npm install -g npm@latest
+        npm ci
 
     - name: Build for Linux
       run: npm run gulp vscode-linux-x64
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: vscode-linux-x64
+        path: .build/linux/
+        retention-days: 5

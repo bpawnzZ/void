@@ -1,10 +1,10 @@
 const { series } = require('gulp');
 const exec = require('child_process').exec;
 
-// Importar las tareas existentes desde gulpfile.base.js
+// Import the base gulpfile tasks
 const baseGulpfile = require('./build/gulpfile.base');
 
-// Nueva tarea para compilar componentes React
+// New task for compiling React components
 function buildReact(cb) {
   console.log('Building React components...');
   exec('npm run buildreact', function (err, stdout, stderr) {
@@ -18,11 +18,8 @@ function buildReact(cb) {
   });
 }
 
-// Referencia a la tarea existente 'vscode-linux-x64'
-const existingBuildTask = baseGulpfile['vscode-linux-x64'];
+// Combine base task with React build
+exports['vscode-linux-x64'] = series(buildReact, baseGulpfile['vscode-linux-x64']);
 
-// Definir la nueva tarea 'vscode-linux-x64' que incluye 'buildReact' antes
-exports['vscode-linux-x64'] = series(buildReact, existingBuildTask);
-
-// Exportar otras tareas existentes
+// Export other tasks from base gulpfile
 Object.assign(exports, baseGulpfile);

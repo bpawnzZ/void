@@ -34,10 +34,17 @@ jobs:
 
     - name: Install npm dependencies
       run: |
-        npm ci
+        npm install
+        npm install --save-dev @types/react
+
+    - name: Prebuild steps
+      run: |
+        npm run postinstall || true
+        npm run compile || true
 
     - name: Build for Linux
-      run: npm run gulp vscode-linux-x64
+      run: |
+        npm run gulp vscode-linux-x64 --verbose
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
@@ -45,3 +52,15 @@ jobs:
         name: vscode-linux-x64
         path: .build/linux/
         retention-days: 5
+
+    - name: Diagnostic Information
+      if: failure()
+      run: |
+        echo "Node.js version:"
+        node --version
+        echo "npm version:"
+        npm --version
+        echo "Listing node_modules:"
+        ls -la node_modules
+        echo "Checking React-related modules:"
+        find . -name "react" -type d

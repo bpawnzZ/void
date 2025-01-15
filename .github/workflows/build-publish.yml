@@ -12,6 +12,9 @@ jobs:
         arch: [x64, x86]
     steps:
     - uses: actions/checkout@v3
+      with:
+        repository: build1
+        path: build1
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
@@ -24,15 +27,17 @@ jobs:
 
     - name: Build for Linux (${{ matrix.arch }})
       run: |
+        cd build1
+        npm ci
         npm run gulp -- vscode-linux-${{ matrix.arch }}
 
     - name: Package artifacts
       run: |
         mkdir -p dist
-        tar -czf dist/void-linux-${{ matrix.arch }}.tar.gz -C build/linux-${{ matrix.arch }} .
+        tar -czf dist/build1-void-linux-${{ matrix.arch }}.tar.gz -C build1/build/linux-${{ matrix.arch }} .
 
     - name: Publish to GitHub Packages
       uses: actions/upload-artifact@v3
       with:
-        name: void-linux-${{ matrix.arch }}
-        path: dist/void-linux-${{ matrix.arch }}.tar.gz
+        name: build1-void-linux-${{ matrix.arch }}
+        path: dist/build1-void-linux-${{ matrix.arch }}.tar.gz

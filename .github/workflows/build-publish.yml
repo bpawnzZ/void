@@ -1,0 +1,57 @@
+name: Build and Publish Linux Bundle
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['.github/**']  # Prevent infinite loops from workflow updates
+
+jobs:
+  build-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js 20.16.0
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.16.0'
+        cache: 'npm'
+
+    - name: Install Linux dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          g++ \
+          libx11-dev \
+          libxkbfile-dev \
+          libsecret-1-dev \
+          libkrb5-dev \
+          python-is-python3
+
+    - name: Install project dependencies
+      run: npm ci
+
+    - name: Build React components
+      run: npm run buildreact
+
+    - name: Compile Void
+      run: npm run watch
+
+    - name: Create Linux bundle
+      run: npm run gulp vscode-linux-x64
+
+    - name: Package and publish
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        cd ..
+        tar -zcvf void-linux-x64-${{ github.sha }}.tar.gz VSCode-linux-x64
+        gh release create ${GITHUB_REF#refs/heads/}-$(date +%s) \
+          --notes "Automatic build of ${{ github.sha }}" \
+          ./void-linux-x64-${{ github.sha }}.tar.gz

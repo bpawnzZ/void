@@ -22,14 +22,18 @@ const builtInExtensions = productjson.builtInExtensions || [];
 const webBuiltInExtensions = productjson.webBuiltInExtensions || [];
 const controlFilePath = path.join(os.homedir(), '.vscode-oss-dev', 'extensions', 'control.json');
 const ENABLE_LOGGING = !process.env['VSCODE_BUILD_BUILTIN_EXTENSIONS_SILENCE_PLEASE'];
+const CONCURRENCY = 4; // Added concurrency limit
+
 function log(...messages) {
     if (ENABLE_LOGGING) {
         fancyLog(...messages);
     }
 }
+
 function getExtensionPath(extension) {
     return path.join(root, '.build', 'builtInExtensions', extension.name);
 }
+
 function isUpToDate(extension) {
     const packagePath = path.join(getExtensionPath(extension), 'package.json');
     if (!fs.existsSync(packagePath)) {
@@ -44,13 +48,14 @@ function isUpToDate(extension) {
         return false;
     }
 }
+
 function getExtensionDownloadStream(extension) {
     const galleryServiceUrl = productjson.extensionsGallery?.serviceUrl;
     return (galleryServiceUrl ? ext.fromMarketplace(galleryServiceUrl, extension) : ext.fromGithub(extension))
         .pipe(rename(p => p.dirname = `${extension.name}/${p.dirname}`));
 }
+
 function getExtensionStream(extension) {
-    // if the extension exists on disk, use those files instead of downloading anew
     if (isUpToDate(extension)) {
         log('[extensions]', `${extension.name}@${extension.version} up to date`, ansiColors.green('✔︎'));
         return vfs.src(['**'], { cwd: getExtensionPath(extension), dot: true })
@@ -58,6 +63,7 @@ function getExtensionStream(extension) {
     }
     return getExtensionDownloadStream(extension);
 }
+
 function syncMarketplaceExtension(extension) {
     const galleryServiceUrl = productjson.extensionsGallery?.serviceUrl;
     const source = ansiColors.blue(galleryServiceUrl ? '[marketplace]' : '[github]');
@@ -70,6 +76,7 @@ function syncMarketplaceExtension(extension) {
         .pipe(vfs.dest('.build/builtInExtensions'))
         .on('end', () => log(source, extension.name, ansiColors.green('✔︎')));
 }
+
 function syncExtension(extension, controlState) {
     if (extension.platforms) {
         const platforms = new Set(extension.platforms);
@@ -97,6 +104,7 @@ function syncExtension(extension, controlState) {
             return es.readArray([]);
     }
 }
+
 function readControlFile() {
     try {
         return JSON.parse(fs.readFileSync(controlFilePath, 'utf8'));
@@ -105,27 +113,44 @@ function readControlFile() {
         return {};
     }
 }
+
 function writeControlFile(control) {
     fs.mkdirSync(path.dirname(controlFilePath), { recursive: true });
     fs.writeFileSync(controlFilePath, JSON.stringify(control, null, 2));
 }
+
 function getBuiltInExtensions() {
     log('Synchronizing built-in extensions...');
     log(`You can manage built-in extensions with the ${ansiColors.cyan('--builtin')} flag`);
     const control = readControlFile();
     const streams = [];
-    for (const extension of [...builtInExtensions, ...webBuiltInExtensions]) {
+    const extensions = [...builtInExtensions, ...webBuiltInExtensions];
+    
+    // Process extensions in parallel with concurrency limit
+    const processExtension = async (extension) => {
         const controlState = control[extension.name] || 'marketplace';
         control[extension.name] = controlState;
-        streams.push(syncExtension(extension, controlState));
+        return syncExtension(extension, controlState);
+    };
+    
+    const processBatch = async (batch) => {
+        await Promise.all(batch.map(processExtension));
+    };
+    
+    const batchSize = CONCURRENCY;
+    for (let i = 0; i < extensions.length; i += batchSize) {
+        const batch = extensions.slice(i, i + batchSize);
+        streams.push(processBatch(batch));
     }
+
     writeControlFile(control);
     return new Promise((resolve, reject) => {
-        es.merge(streams)
-            .on('error', reject)
-            .on('end', resolve);
+        Promise.all(streams)
+            .then(() => resolve())
+            .catch(reject);
     });
 }
+
 if (require.main === module) {
     getBuiltInExtensions().then(() => process.exit(0)).catch(err => {
         console.error(err);
